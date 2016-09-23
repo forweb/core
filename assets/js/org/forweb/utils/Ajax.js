@@ -55,4 +55,4 @@ Engine.define('Ajax', (function () {
         return xmlhttp;
     };
     return out;
-})());
+}));

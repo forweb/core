@@ -1,4 +1,4 @@
-Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
+Engine.define('Popup', ['Dom', 'ScreenUtils'], function () {
 
     var Dom = Engine.require('Dom');
     var ScreenUtils = Engine.require('ScreenUtils');
@@ -9,7 +9,7 @@ Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
     var overlayShown = false;
     var count = 0;
 
-    function Modal(params) {
+    function Popup(params) {
         params = params || {};
         var me = this;
         this.title = Dom.el('div', null, params.title);
@@ -35,19 +35,19 @@ Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
         this.initHeader(params);
 
         this.body = Dom.el('div', 'panel-body' + (this.minimized ? ' minimized' : ''), params.content);
-        this.container = Dom.el('div', {class: 'modal panel'}, [this.header, this.body]);
+        this.container = Dom.el('div', {class: 'Popup panel'}, [this.header, this.body]);
         if (params.isOpen) {
             this.show()
         }
     }
 
 
-    Modal.prototype.initHeader = function (params) {
+    Popup.prototype.initHeader = function (params) {
         var buttons = Dom.el('div', 'control-buttons', [
 
             params.controlMinimize === false ? null :
                 Dom.el('button', {
-                        class: 'success small modal-minimize',
+                        class: 'success small Popup-minimize',
                         onclick: function () {
                             if (me.minimized) {
                                 Dom.removeClass(me.container, 'minimized')
@@ -60,7 +60,7 @@ Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
                     Dom.el('span', null, '_')
                 ),
             params.controlClose === false ? null : Dom.el('button', {
-                    class: 'danger small modal-close',
+                    class: 'danger small Popup-close',
                     onclick: function () {
                         me.hide();
                     }
@@ -93,17 +93,17 @@ Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
             }
         });
     };
-    Modal.prototype.onMouseMove = function (e) {
+    Popup.prototype.onMouseMove = function (e) {
         if (this.drag.active) {
             var b = document.body;
             this.container.style.left = this.drag.x + (e.clientX - this.drag.mx + b.scrollLeft) + 'px';
             this.container.style.top = this.drag.y + (e.clientY - this.drag.my + b.scrollTop) + 'px';
         }
     };
-    Modal.prototype.onDragEnd = function (e) {
+    Popup.prototype.onDragEnd = function (e) {
         this.drag.active = false;
     };
-    Modal.prototype.onDragStart = function (e) {
+    Popup.prototype.onDragStart = function (e) {
         if (!this.drag.active) {
             this.drag.active = true;
             this.drag.x = parseInt(this.container.style.left);
@@ -114,7 +114,7 @@ Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
             this.drag.my = e.clientY + b.scrollTop;
         }
     };
-    Modal.prototype.show = function () {
+    Popup.prototype.show = function () {
         if (this.withOverlay && !overlayShown) {
             document.body.appendChild(overlay);
         }
@@ -128,21 +128,21 @@ Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
             this.container.style.left = ((ScreenUtils.window().width - this.container.offsetWidth) / 2) + 'px'
         }
     };
-    Modal.prototype.setContent = function (content) {
+    Popup.prototype.setContent = function (content) {
         this.body.innerHTML = '';
         Dom.append(this.body, content);
     };
-    Modal.prototype.setTitle = function (content) {
+    Popup.prototype.setTitle = function (content) {
         this.title.innerHTML = '';
         Dom.append(this.title, content)
     };
-    Modal.prototype.onKeyUp = function (e) {
+    Popup.prototype.onKeyUp = function (e) {
         if (this.isOpen && e.keyCode == 27) {
             e.preventDefault();
             this.hide();
         }
     };
-    Modal.prototype.hide = function () {
+    Popup.prototype.hide = function () {
         count--;
         this.isOpen = false;
         if (count < 0) {
@@ -155,7 +155,7 @@ Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
         Dom.removeListeners(this.listeners);
     };
 
-    Modal.getParams = function () {
+    Popup.getParams = function () {
         return {
             isOpen: false,
             minimized: false,
@@ -167,5 +167,5 @@ Engine.define('Modal', ['Dom', 'ScreenUtils'], function () {
         }
     };
 
-    return Modal;
+    return Popup;
 });

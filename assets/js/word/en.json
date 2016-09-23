@@ -1,4 +1,12 @@
 {
   "ok": "Ok",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "name": "Default Name",
+  "surname": "Default Surname",
+  "clb_check": "Called with callback (default)",
+  "test": {
+    "name": "Test Name",
+    "surname": "Test Surname",
+    "clb_check": "Called with callback (test)"
+  }
 }

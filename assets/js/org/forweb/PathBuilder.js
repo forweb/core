@@ -13,7 +13,7 @@ Engine.define('PathBuilder', function(){
             case 'Dom':
             case 'Ajax':
             case 'Rest':
-            case 'Context':
+            case 'Config':
             case 'ScreenUtils':
             case 'StringUtils':
             case 'KeyboardUtils':
