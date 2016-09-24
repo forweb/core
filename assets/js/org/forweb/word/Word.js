@@ -4,10 +4,16 @@ Engine.define('Word', ['Ajax'], function(){
     var enLaguageLoaded = false;
     
     var Word = function(key, module, container, strategy) {
-        if(!container) {
+        if(!strategy && typeof container === 'string') {
+            strategy = container;
             container = module;
             module = 'default';
         }
+        if(typeof module !== 'string' && !container) {
+            container = module;
+            module = 'default';
+        }
+        
         var clb = function(text){
             if(strategy && strategy != 'text') {
                 if(strategy == 'append') {

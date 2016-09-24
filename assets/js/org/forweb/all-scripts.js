@@ -622,7 +622,7 @@ Engine.define('StringUtils', (function () {
     var NORMAL_TEXT_REGEXP = /([a-z])([A-Z])/g;
     var REMOVE_FIRST_LAST_SLASHES = /^(\/)|(\/)$/g;
     var LOW_DASH = /\_/g;
-    var DASH = /\_/g;
+    var DASH = /\-/g;
 
     var StringUtils = {
         unique: function (l) {
@@ -660,7 +660,7 @@ Engine.define('StringUtils', (function () {
     };
 
     return StringUtils;
-})());
+}));
 Engine.define('Tabs', ['Dom'], (function(Dom) {
 
     var Tabs = function () {
@@ -1519,7 +1519,7 @@ Engine.define('UrlResolver', ['StringUtils'], function(StringUtils) {
             if(!path) {
                 path = 'Home';
             }
-            return StringUtils.normalizeText(path).replace(wSregex, '');
+            return StringUtils.normalizeText(path, '-').replace(this.wSregex, '');
         }
     }
 });
@@ -1608,8 +1608,11 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver'], function () {
             var url;
             if(app.getUrl) {
                 url = app.getUrl();
-            } else if (app.URL || app.url) {
-                url = app.URL || app.url;
+            } else if (app.URL !== undefined || app.url !== undefined) {
+                url = app.URL;
+                if(url === undefined) {
+                    url = app.url;
+                }
             } else {
                 url = '';
             }
@@ -1665,10 +1668,16 @@ Engine.define('Word', ['Ajax'], function(){
     var enLaguageLoaded = false;
 
     var Word = function(key, module, container, strategy) {
-        if(!container) {
+        if(!strategy && typeof container === 'string') {
+            strategy = container;
             container = module;
             module = 'default';
         }
+        if(typeof module !== 'string' && !container) {
+            container = module;
+            module = 'default';
+        }
+
         var clb = function(text){
             if(strategy && strategy != 'text') {
                 if(strategy == 'append') {

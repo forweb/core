@@ -112,11 +112,19 @@ var Engine = (function(){
             new Notification(message, type);
         },
         findPath: function(module) {
-            for(var i = 0; i < Engine.pathBuilder.length; i++) {
-                var pathBuilder = Engine.pathBuilder[i];
-                var out = pathBuilder.buildPath(module);
+            var out;
+            if(typeof Engine.pathBuilder === 'function') {
+                out = Engine.pathBuilder(module);
                 if(out) {
                     return out;
+                }
+            } else {
+                for (var i = 0; i < Engine.pathBuilder.length; i++) {
+                    var pathBuilder = Engine.pathBuilder[i];
+                    out = pathBuilder.buildPath(module);
+                    if (out) {
+                        return out;
+                    }
                 }
             }
             throw "Can't find module " + module;

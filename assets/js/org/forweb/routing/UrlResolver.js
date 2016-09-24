@@ -21,7 +21,7 @@ Engine.define('UrlResolver', ['StringUtils'], function(StringUtils) {
             if(!path) {
                 path = 'Home';
             }
-            return StringUtils.normalizeText(path).replace(wSregex, '');
+            return StringUtils.normalizeText(path, '-').replace(this.wSregex, '');
         }
     }
 });

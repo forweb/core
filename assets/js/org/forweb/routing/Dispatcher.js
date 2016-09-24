@@ -83,8 +83,11 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver'], function () {
             var url;
             if(app.getUrl) {
                 url = app.getUrl();
-            } else if (app.URL || app.url) {
-                url = app.URL || app.url;
+            } else if (app.URL !== undefined || app.url !== undefined) {
+                url = app.URL;
+                if(url === undefined) {
+                    url = app.url;
+                }
             } else {
                 url = '';
             }

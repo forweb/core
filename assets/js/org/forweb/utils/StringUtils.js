@@ -3,7 +3,7 @@ Engine.define('StringUtils', (function () {
     var NORMAL_TEXT_REGEXP = /([a-z])([A-Z])/g;
     var REMOVE_FIRST_LAST_SLASHES = /^(\/)|(\/)$/g;
     var LOW_DASH = /\_/g;
-    var DASH = /\_/g;
+    var DASH = /\-/g;
     
     var StringUtils = {
         unique: function (l) {
@@ -41,4 +41,4 @@ Engine.define('StringUtils', (function () {
     };
     
     return StringUtils;
-})());
+}));
