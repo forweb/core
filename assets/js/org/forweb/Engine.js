@@ -17,6 +17,12 @@ var Engine = (function(){
             case 'S':
                 style += 'color:#3c763d;background-color:#dff0d8;border-color:#d6e9c6;';
                 break;
+            case 'I':
+                style += 'color: #31708f;background-color: #d9edf7;border-color: #9acfea;';
+                break;
+            case 'W':
+                style += 'color: #8a6d3b;background-color: #fcf8e3;border-color: #f5e79e;';
+                break;
             case 'E':
                 style += 'color:#a94442;background-color:#f2dede;border-color:#ebccd1;';
                 break;
@@ -108,8 +114,8 @@ var Engine = (function(){
                 return modules[name];
             }
         },
-        console: function (message, type) {
-            new Notification(message, type);
+        notify: function (message, type, time) {
+            new Notification(message, type, time);
         },
         findPath: function(module) {
             var out;
@@ -137,7 +143,7 @@ var Engine = (function(){
         if (Engine.pathBuilder !== null) {
             path = Engine.findPath(module);
         } else {
-            path = "js/" + module + ".js";
+            path = "assets/js/" + module + ".js";
         }
         if (!path) {
             throw "Can't load module " + module + " because path is undefined ";
@@ -191,7 +197,7 @@ var Engine = (function(){
                 };
                 _load(module, function () {
                     if(Engine.log) {
-                        Engine.console("Script " + module + " was loaded as dependency for: " + parentName, 'S');
+                        Engine.notify("Script " + module + " was loaded as dependency for: " + parentName, 'S');
                     }
                     loaded[module].afterLoad();
                 });

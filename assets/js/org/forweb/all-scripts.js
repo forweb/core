@@ -17,6 +17,12 @@ var Engine = (function(){
             case 'S':
                 style += 'color:#3c763d;background-color:#dff0d8;border-color:#d6e9c6;';
                 break;
+            case 'I':
+                style += 'color: #31708f;background-color: #d9edf7;border-color: #9acfea;';
+                break;
+            case 'W':
+                style += 'color: #8a6d3b;background-color: #fcf8e3;border-color: #f5e79e;';
+                break;
             case 'E':
                 style += 'color:#a94442;background-color:#f2dede;border-color:#ebccd1;';
                 break;
@@ -108,15 +114,23 @@ var Engine = (function(){
                 return modules[name];
             }
         },
-        console: function (message, type) {
-            new Notification(message, type);
+        notify: function (message, type, time) {
+            new Notification(message, type, time);
         },
         findPath: function(module) {
-            for(var i = 0; i < Engine.pathBuilder.length; i++) {
-                var pathBuilder = Engine.pathBuilder[i];
-                var out = pathBuilder.buildPath(module);
+            var out;
+            if(typeof Engine.pathBuilder === 'function') {
+                out = Engine.pathBuilder(module);
                 if(out) {
                     return out;
+                }
+            } else {
+                for (var i = 0; i < Engine.pathBuilder.length; i++) {
+                    var pathBuilder = Engine.pathBuilder[i];
+                    out = pathBuilder.buildPath(module);
+                    if (out) {
+                        return out;
+                    }
                 }
             }
             throw "Can't find module " + module;
@@ -129,7 +143,7 @@ var Engine = (function(){
         if (Engine.pathBuilder !== null) {
             path = Engine.findPath(module);
         } else {
-            path = "js/" + module + ".js";
+            path = "assets/js/" + module + ".js";
         }
         if (!path) {
             throw "Can't load module " + module + " because path is undefined ";
@@ -183,7 +197,7 @@ var Engine = (function(){
                 };
                 _load(module, function () {
                     if(Engine.log) {
-                        Engine.console("Script " + module + " was loaded as dependency for: " + parentName, 'S');
+                        Engine.notify("Script " + module + " was loaded as dependency for: " + parentName, 'S');
                     }
                     loaded[module].afterLoad();
                 });
@@ -631,6 +645,10 @@ Engine.define('StringUtils', (function () {
         removeSlashes: function (str){
             return str.replace(REMOVE_FIRST_LAST_SLASHES, '');
         },
+        capitalize: function(str){
+            if(!str)return str;
+            return str[0].toUpperCase() + str.substring(1);
+        },
         normalizeText: function(str, glue){
             if(glue === undefined) {
                 glue = ' ';
@@ -650,17 +668,120 @@ Engine.define('StringUtils', (function () {
                 var out = '';
                 for (var i = 0; i < p.length; i++) {
                     if (!p[i])continue;
-                    out += p[i].charAt(0).toUpperCase() + p[i].substring(1) + (i !== p.length - 1 ? glue : '');
+                    out += StringUtils.capitalize(p[i]) + (i !== p.length - 1 ? glue : '');
                 }
                 return out;
             } else {
-                return str.charAt(0).toUpperCase() + str.substring(1);
+                return StringUtils.capitalize(str);
             }
         }
     };
 
     return StringUtils;
 }));
+Engine.define('UrlUtils', 'StringUtils', function(){
+    var StringUtils = Engine.require('StringUtils');
+
+    var UrlUtils = {
+        /**
+         * Get path from document.location without trailing slashes
+         * example:
+         * (without arguments)
+         * http://mysite.com/some/path/here/
+         * UrlUtils.getPath() => some/path/here
+         *
+         * (with argument)
+         * http://mysite.com/some/path/here/
+         * UrlUtils.getPath(1) => some
+         * UrlUtils.getPath(2) => path
+         *
+         * @returns string
+         */
+        getPath: function (index) {
+            var path = StringUtils.removeSlashes(document.location.pathname);
+            if(index) {
+                return path.split('/')[index - 1];
+            } else {
+                return path;
+            }
+        },
+        /**
+         * Fetch query value from document.location
+         *
+         * example:
+         * http://mysite.com?param=argument
+         * UrlUtils.getQuery('param') => argument  (decoded)
+         *
+         * @param paramName
+         * @returns string|null
+         */
+        getQuery: function(paramName) {
+            var queryString = document.location.search.replace(QUESTION_CHAR, '');
+            var queryArray = queryString.split('&');
+            if(queryArray.length > 0) {
+                var eqParamName = paramName + "=";
+                for(var i = 0; i < queryArray.length; i++) {
+                    if(queryArray[i].indexOf(eqParamName) === 0) {
+                        return decodeURIComponent(queryArray[i].substring(eqParamName.length));
+                    } else if(queryArray[i] === eqParamName || queryArray[i] === paramName) {
+                        return "";
+                    }
+                }
+            }
+            return null;
+        },
+
+        appendQuery: function(name, value) {
+            var path = UrlUtils.getPath();
+            var oldValue = UrlUtils.getQuery(name);
+            name = encodeURIComponent(name);
+            var eqName = name + "=";
+            var append = value || value === 0 ? eqName + encodeURIComponent(value) : name;
+
+            var search = document.location.search;
+            if(oldValue === null && search === "") {
+                search = "?" + append;
+            } else {
+                var parts = search.replace(/^\?/, '').split("&");
+                var done = false;
+                if(search.indexOf(name) > -1) {
+                    for (var i = parts.length - 1; i >= 0; i--) {
+                        if (parts[i].indexOf(eqName) === 0 || parts[i] === name) {
+                            parts[i] = append;
+                            done = true;
+                            break;
+                        }
+
+                    }
+                }
+                if(!done) {
+                    parts.push(append);
+                }
+                search = "?" + parts.join("&");
+            }
+            history.push(path + search);
+        },
+        removeQuery: function(paramName){
+            if(paramName) {
+                var queryString = document.location.search.replace(QUESTION_CHAR, '');
+                var queryArray = queryString.split('&');
+                if(queryArray.length > 0) {
+                    var eqParamName = paramName + "=";
+                    for(var i = 0; i < queryArray.length; i++) {
+                        if(queryArray[i].indexOf(eqParamName) === 0 || queryArray[i] === paramName) {
+                            queryArray.splice(i, 1);
+                            var path = UrlUtils.getPath();
+                            history.push(path + (queryArray.length ? "?" + queryArray.join("&") : ''));
+                            break;
+                        }
+                    }
+
+                }
+            }
+        }
+    };
+    return UrlUtils;
+});
 Engine.define('Tabs', ['Dom'], (function(Dom) {
 
     var Tabs = function () {
@@ -1496,36 +1617,104 @@ Engine.define('GenericForm', ['Dom', 'Text'], function(){
 
     return GenericForm;
 });
+
 Engine.define('UrlResolver', ['StringUtils'], function(StringUtils) {
+    /**
+     *
+     * @type {{app:string, data:[{dynamic:boolean,name:string}]}}
+     */
+    var mapping = [];
     return {
         regex: /(^\/)|(\/$)/,
-        wSregex: /\s/g,
         strategy: 'path',
-        resolve: function () {
-            var path;
-            if(this.strategy === 'path'){
-                path = document.location.pathname;
-                path = path.replace(this.regex, '');
-            } else {
-                path = document.location.hash;
-                if(path.indexOf('#') === 0) {
-                    path = path.substring(1);
+        resolve: function (url) {
+            url = StringUtils.removeSlashes(url);
+            if(url === '') {
+                url = 'home';
+            }
+            var parts = url.split('/');
+            var params;
+            var app = null;
+
+            for(var k = 0; k < mapping.length; k++) {
+                var compatible = false;
+                params = {};
+                var route = mapping[k];
+                var data = route.data;
+                if(data.length === parts.length || data[data.length - 1] === '*') {
+                    compatible = true;
+                    app = route.app;
+                    params = {};
+                    for (var i = 0; i < data.length; i++) {
+                        var item = data[i];
+                        if(item.dynamic) {
+                            params[item.name] = parts[i];
+                        } else if(item.name === parts[i] || item.name === '*'){
+                        } else {
+                            compatible = false;
+                            break;
+                        }
+                    }
+                }
+                if(compatible) {
+                    app = route.app;
+                } else {
+                    params = {};
+                    app = '';
                 }
             }
-            var slashIndex = path.indexOf('/');
-            if (slashIndex > -1) {
-                path = path.substring(slashIndex);
+            return {params: params, app: app};
+        },
+        addMapping: function(className, url){
+            if(typeof className !== 'string' || typeof url !== 'string') {
+                throw 'Invalid arguments exception';
             }
-            if(!path) {
-                path = 'Home';
+            var urlData = this.parseUrl(url);
+            for(var i = 0; i< mapping; i++) {
+                var data = mapping[i].data;
+                var same = data.length === urlData.length;
+                if(same) {
+                    for(var d = 0; d < data.length; d++) {
+                        var oldItem = data[d];
+                        var newItem = urlData[d];
+                        if(!oldItem.dynamic && !newItem.dynamic) {
+                            if(oldItem.name !== newItem.name) {
+                                same = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if(same) {
+                    throw "Can't put two items with same request mapping: " + url;
+                }
             }
-            return StringUtils.normalizeText(path, '-').replace(this.wSregex, '');
+            mapping.push({
+                app: className,
+                data: urlData
+            });
+        },
+        parseUrl: function(url){
+            url = StringUtils.removeSlashes(url);
+            var parts = url.split("/");
+            var out = [];
+            for(var i = 0; i < parts.length; i++) {
+                var name = parts[i];
+                var dynamic = name[0] == ':';
+                if(dynamic) {
+                    name =  name.substring(1);
+                }
+                out.push({name: name, dynamic: dynamic});
+            }
+            return out;
         }
     }
 });
-Engine.define('Dispatcher', ['Dom', 'UrlResolver'], function () {
+
+Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
 
     var Dom = Engine.require('Dom');
+    var UrlUtils = Engine.require('UrlUtils');
     var UrlResolver = Engine.require('UrlResolver');
 
     var regex = /(^\/)|(\/$)/;
@@ -1538,15 +1727,20 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver'], function () {
         this.history = history;
         this.urlResolver = urlResolver || UrlResolver;
         var me = this;
-        Dom.addListeners({onpopstate: function(){
+        var openApplication = function(){
             if(me.urlResolver) {
-                var app = me.urlResolver.resolve();
-                me.placeApplication(app);
+                var path = UrlUtils.getPath();
+                me.placeApplication(path);
             }
-        }});
+        };
+        Dom.addListeners({onpopstate: openApplication});
         this.events = null;
     };
 
+    Dispatcher.prototype.addMapping = function(className, url) {
+        this.urlResolver.addMapping(className, url);
+    };
+    
     Dispatcher.prototype.addListener = function(name, listner) {
         if(!listner) {
             listner = name;
@@ -1570,88 +1764,50 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver'], function () {
         this.events[name].push(listner);
     };
 
-    Dispatcher.prototype.initApplication = function (contructor) {
-        var application;
-        var placeApplication = function(applicationName, directives){
-            me.placeApplication(applicationName, directives);
-        };
-        if(typeof contructor == "function") {
-            var me = this;
-            application = new contructor(this.context, this.config, placeApplication);
-        } else {
-            application = contructor;
-            if(application.init) {
-                application.init(this.context, this.config, placeApplication);
-            }
+    Dispatcher.prototype.placeApplication = function (url, directives) {
+        if(!url) {
+            url = UrlUtils.getPath();
         }
-        return application;
-    };
-    Dispatcher.prototype.placeApplication = function (applicationName, directives) {
+        var resolved = this.urlResolver.resolve(url);
+        var applicationName;
+        if(resolved.app) {
+            applicationName = resolved.app;
+        } else {
+            applicationName = 'Page404';
+        }
         var me = this;
         var application = me.applications[applicationName];
         var callback = function(application) {
-            var app = me.initApplication(application);
             if (!application) {
                 throw "Undefined application " + applicationName;
             }
-            if (me.activeApplication) {
-                if (me.activeApplication.beforeClose) {
-                    me.activeApplication.beforeClose();
+            closeApplication(me, me.activeApplication, applicationName);
+            if(me.context) {
+                me.context.request = {
+                    url: url,
+                    params: resolved.params
                 }
-                me.fireEvent('beforeClose', applicationName);
-                me.app.innerHTML = '';
-                if (me.activeApplication.afterClose) {
-                    me.activeApplication.afterClose();
-                }
-                me.fireEvent('afterClose', applicationName);
             }
-            var url;
-            if(app.getUrl) {
-                url = app.getUrl();
-            } else if (app.URL !== undefined || app.url !== undefined) {
-                url = app.URL;
-                if(url === undefined) {
-                    url = app.url;
-                }
-            } else {
-                url = '';
-            }
-            var title;
-            if(app.getTitle) {
-                title = app.getTitle();
-            } else if (app.TITLE || app.title) {
-                title = app.TITLE || app.title;
-            } else {
-                title = '';
-            }
+            var app = initApplication(me, application);
+            var title = getTitle(app);
             var path = document.location.pathname.replace(regex, '');
             if(url !== path) {
                 var hash = document.location.hash;
                 this.history.pushState({}, title, url + (hash ? hash : ''));
             }
-
             me.activeApplication = app;
-            if (app.beforeOpen) {
-                app.beforeOpen(directives);
-            }
-            me.fireEvent('beforeOpen', applicationName);
-            if(app.container) {
-                me.app.appendChild(app.container);
-            }
-            if (app.afterOpen) {
-                app.afterOpen();
-            }
-            me.fireEvent('afterOpen', applicationName);
+            openApplication(me, app, resolved.params, directives, applicationName);
         };
         if(application) {
             callback(application);
         } else {
             Engine.load(applicationName, function() {
                 me.applications[applicationName] = Engine.require(applicationName);
-                me.placeApplication(applicationName, directives);
+                callback(me.applications[applicationName], directives);
             })
         }
     };
+
     Dispatcher.prototype.fireEvent = function(eventType, applicationName){
         if(this.events === null) return;
         if(!this.events[eventType])return;
@@ -1660,6 +1816,65 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver'], function () {
             events[i](applicationName);
         }
     };
+
+
+
+    function initApplication (dispatcher, contructor) {
+        var application;
+        var placeApplication = function(applicationName, directives){
+            dispatcher.placeApplication(applicationName, directives);
+        };
+        if(typeof contructor == "function") {
+            var me = this;
+            application = new contructor(dispatcher.context, dispatcher.config, placeApplication);
+        } else {
+            application = contructor;
+            if(application.init) {
+                application.init(dispatcher.context, dispatcher.config, placeApplication);
+            }
+        }
+        return application;
+    }
+
+    function closeApplication(dispatcher, application, applicationName) {
+        if (application) {
+            if (application.beforeClose) {
+                application.beforeClose();
+            }
+            dispatcher.fireEvent('beforeClose', applicationName);
+            dispatcher.app.innerHTML = '';
+            if (application.afterClose) {
+                application.afterClose();
+            }
+            dispatcher.fireEvent('afterClose', applicationName);
+        }
+    }
+    function getTitle(app) {
+        if(app.getTitle) {
+            return app.getTitle();
+        } else if (app.TITLE || app.title) {
+            return app.TITLE || app.title;
+        } else {
+            return '';
+        }
+    }
+    function addMapping(obj) {
+        this.urlResolver.addMapping(obj);
+    }
+    function openApplication(dispatcher, app, params, directives, applicationName){
+        if (app.beforeOpen) {
+            app.beforeOpen(params, directives);
+        }
+        dispatcher.fireEvent('beforeOpen', applicationName);
+        if(app.container) {
+            dispatcher.app.appendChild(app.container);
+        }
+        if (app.afterOpen) {
+            app.afterOpen(params, directives);
+        }
+        dispatcher.fireEvent('afterOpen', applicationName);
+    }
+
     return Dispatcher;
 });
 Engine.define('Word', ['Ajax'], function(){
@@ -1772,7 +1987,7 @@ Engine.define('Word', ['Ajax'], function(){
                         Word.loadLanguage('en', onLoad[language]);
                         delete(onLoad[language]);
                     } else {
-                        Engine.console("Can't load language - " + language, 'E');
+                        Engine.notify("Can't load language - " + language, 'E');
                     }
                 }
             );

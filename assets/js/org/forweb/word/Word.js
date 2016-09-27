@@ -108,7 +108,7 @@ Engine.define('Word', ['Ajax'], function(){
                         Word.loadLanguage('en', onLoad[language]);
                         delete(onLoad[language]);
                     } else {
-                        Engine.console("Can't load language - " + language, 'E');
+                        Engine.notify("Can't load language - " + language, 'E');
                     }
                 }
             );

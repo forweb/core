@@ -18,14 +18,14 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
         }
     };
 
-    Menu.prototype.menu = function(className, label, callback, _parentActivate) {
+    Menu.prototype.menu = function(url, label, callback, _parentActivate) {
         var me = this;
         if(typeof label === 'function' && !callback) {
             callback = label;
             label = null;
         }
-        if(className && !label) {
-            label = StringUtils.normalizeText(className);
+        if(url && !label) {
+            label = StringUtils.normalizeText(url);
         }
         if(!callback && this.defaultCallback) {
             callback = this.defaultCallback;
@@ -42,12 +42,12 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
             }
             Dom.addClass(item, 'active');
         };
-        if(className) {
-            var params = {href: '/' + StringUtils.normalizeText(className, '-')};
+        if(url) {
+            var params = {href: '/' + StringUtils.normalizeText(url, '-')};
             params.onclick = function (e) {
                 activate(e);
                 if (callback) {
-                    callback(className, e);
+                    callback(url, e);
                 }
             };
             link = Dom.el('a', params, label);

@@ -12,6 +12,10 @@ Engine.define('StringUtils', (function () {
         removeSlashes: function (str){
             return str.replace(REMOVE_FIRST_LAST_SLASHES, '');
         },
+        capitalize: function(str){
+            if(!str)return str;
+            return str[0].toUpperCase() + str.substring(1);
+        },
         normalizeText: function(str, glue){
             if(glue === undefined) {
                glue = ' '; 
@@ -31,11 +35,11 @@ Engine.define('StringUtils', (function () {
                 var out = '';
                 for (var i = 0; i < p.length; i++) {
                     if (!p[i])continue;
-                    out += p[i].charAt(0).toUpperCase() + p[i].substring(1) + (i !== p.length - 1 ? glue : '');
+                    out += StringUtils.capitalize(p[i]) + (i !== p.length - 1 ? glue : '');
                 }
                 return out;
             } else {
-                return str.charAt(0).toUpperCase() + str.substring(1);
+                return StringUtils.capitalize(str);
             }
         }
     };
