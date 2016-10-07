@@ -38,12 +38,16 @@ Engine.define('UrlResolver', ['StringUtils'], function(StringUtils) {
                 }
                 if(compatible) {
                     app = route.app;
+                    break;
                 } else {
                     params = {};
                     app = '';
                 }
             }
-            return {params: params, app: app};
+            if(url === 'home') {
+                url = '';
+            }
+            return {params: params, app: app, url: url};
         },
         addMapping: function(className, url){
             if(typeof className !== 'string' || typeof url !== 'string') {

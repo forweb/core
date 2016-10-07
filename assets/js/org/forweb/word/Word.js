@@ -1,8 +1,8 @@
-Engine.define('Word', ['Ajax'], function(){
-    var Ajax = Engine.require('Ajax');
+Engine.define('Word', ['Rest'], function(){
+    var Rest = Engine.require('Rest');
     var onLoad = {};
     var enLaguageLoaded = false;
-    
+
     var Word = function(key, module, container, strategy) {
         if(!strategy && typeof container === 'string') {
             strategy = container;
@@ -13,7 +13,7 @@ Engine.define('Word', ['Ajax'], function(){
             container = module;
             module = 'default';
         }
-        
+
         var clb = function(text){
             if(strategy && strategy != 'text') {
                 if(strategy == 'append') {
@@ -77,11 +77,7 @@ Engine.define('Word', ['Ajax'], function(){
         if(Word.loader) {
             Word.loader(language, onLoad[language]);
         } else {
-            Ajax.ajax(
-                {
-                    url: Word.dictionariesPath + language + '.json',
-                    type: 'get'
-                },
+            Rest.doGet(Word.dictionariesPath + language + '.json').then(
                 function(dictionary){
                     var norm = {};
                     for(var k in dictionary) {
@@ -112,7 +108,7 @@ Engine.define('Word', ['Ajax'], function(){
                     }
                 }
             );
-            
+
         }
     };
     Word.translate = function(language, node) {
@@ -137,7 +133,7 @@ Engine.define('Word', ['Ajax'], function(){
             Word.loadLanguage(language, clb);
         }
     };
-    
+
     Word.create = function(defaultModule, defaultContainer) {
         var out = function(key, module, container, strategy){
             if(typeof module !== 'string') {

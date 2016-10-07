@@ -1658,12 +1658,16 @@ Engine.define('UrlResolver', ['StringUtils'], function(StringUtils) {
                 }
                 if(compatible) {
                     app = route.app;
+                    break;
                 } else {
                     params = {};
                     app = '';
                 }
             }
-            return {params: params, app: app};
+            if(url === 'home') {
+                url = '';
+            }
+            return {params: params, app: app, url: url};
         },
         addMapping: function(className, url){
             if(typeof className !== 'string' || typeof url !== 'string') {
@@ -1710,19 +1714,18 @@ Engine.define('UrlResolver', ['StringUtils'], function(StringUtils) {
         }
     }
 });
-
 Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
 
     var Dom = Engine.require('Dom');
     var UrlUtils = Engine.require('UrlUtils');
     var UrlResolver = Engine.require('UrlResolver');
 
-    var regex = /(^\/)|(\/$)/;
     var Dispatcher = function(appNode, context, config, urlResolver){
         this.app = typeof appNode === 'string' ? Dom.id(appNode) : appNode;
-        this.context = context;
+        this.context = context || {};
         this.config = config || {};
         this.applications = {};
+        this.applicationName = null;
         this.activeApplication = null;
         this.history = history;
         this.urlResolver = urlResolver || UrlResolver;
@@ -1740,7 +1743,7 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
     Dispatcher.prototype.addMapping = function(className, url) {
         this.urlResolver.addMapping(className, url);
     };
-    
+
     Dispatcher.prototype.addListener = function(name, listner) {
         if(!listner) {
             listner = name;
@@ -1768,42 +1771,21 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
         if(!url) {
             url = UrlUtils.getPath();
         }
-        var resolved = this.urlResolver.resolve(url);
+        var me = this;
+        var request = me.urlResolver.resolve(url);
         var applicationName;
-        if(resolved.app) {
-            applicationName = resolved.app;
+        if(request.app) {
+            applicationName = request.app;
         } else {
             applicationName = 'Page404';
         }
-        var me = this;
         var application = me.applications[applicationName];
-        var callback = function(application) {
-            if (!application) {
-                throw "Undefined application " + applicationName;
-            }
-            closeApplication(me, me.activeApplication, applicationName);
-            if(me.context) {
-                me.context.request = {
-                    url: url,
-                    params: resolved.params
-                }
-            }
-            var app = initApplication(me, application);
-            var title = getTitle(app);
-            var path = document.location.pathname.replace(regex, '');
-            if(url !== path) {
-                var hash = document.location.hash;
-                this.history.pushState({}, title, url + (hash ? hash : ''));
-            }
-            me.activeApplication = app;
-            openApplication(me, app, resolved.params, directives, applicationName);
-        };
         if(application) {
-            callback(application);
+            explodeApplication(me, request, applicationName, directives);
         } else {
             Engine.load(applicationName, function() {
                 me.applications[applicationName] = Engine.require(applicationName);
-                callback(me.applications[applicationName], directives);
+                explodeApplication(me, request, applicationName, directives);
             })
         }
     };
@@ -1818,14 +1800,49 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
     };
 
 
+    //private functions
+
+    function explodeApplication(dispatcher, request, applicationName, directives) {
+        var applicationClass = dispatcher.applications[applicationName];
+        if (!applicationClass) {
+            throw "Undefined application " + applicationName;
+        }
+        var contextUpdate = function(){
+            if(dispatcher.context) {
+                dispatcher.context.request = request
+            }
+        };
+        var windowUpdate = function(app){
+            var title = getTitle(app);
+            var path = UrlUtils.getPath();
+            if(request.url !== path) {
+                var hash = document.location.hash;
+                this.history.pushState({}, title, (request.url || '/') + (hash || ''));
+            }
+        };
+
+        if(dispatcher.applicationName === applicationName && dispatcher.activeApplication.canStay) {
+            contextUpdate();
+            windowUpdate(dispatcher.activeApplication);
+            var isCanStay = dispatcher.activeApplication.canStay();
+            if(isCanStay !== false) {
+                return;
+            }
+        }
+        closeApplication(dispatcher, applicationName);
+        contextUpdate();
+        var app = initApplication(dispatcher, applicationClass);
+        windowUpdate(app);
+        openApplication(dispatcher, app, request.params, directives, applicationName);
+    }
 
     function initApplication (dispatcher, contructor) {
         var application;
-        var placeApplication = function(applicationName, directives){
-            dispatcher.placeApplication(applicationName, directives);
-        };
+        if(dispatcher.applicationName)
+            var placeApplication = function(applicationName, directives){
+                dispatcher.placeApplication(applicationName, directives);
+            };
         if(typeof contructor == "function") {
-            var me = this;
             application = new contructor(dispatcher.context, dispatcher.config, placeApplication);
         } else {
             application = contructor;
@@ -1836,17 +1853,19 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
         return application;
     }
 
-    function closeApplication(dispatcher, application, applicationName) {
-        if (application) {
-            if (application.beforeClose) {
-                application.beforeClose();
+    function closeApplication(dispatcher) {
+        var app = dispatcher.activeApplication;
+        if (app) {
+            var appName = dispatcher.applicationName;
+            dispatcher.fireEvent('beforeClose', appName);
+            if (app.beforeClose) {
+                app.beforeClose();
             }
-            dispatcher.fireEvent('beforeClose', applicationName);
             dispatcher.app.innerHTML = '';
-            if (application.afterClose) {
-                application.afterClose();
+            if (app.afterClose) {
+                app.afterClose();
             }
-            dispatcher.fireEvent('afterClose', applicationName);
+            dispatcher.fireEvent('afterClose', appName);
         }
     }
     function getTitle(app) {
@@ -1858,14 +1877,13 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
             return '';
         }
     }
-    function addMapping(obj) {
-        this.urlResolver.addMapping(obj);
-    }
     function openApplication(dispatcher, app, params, directives, applicationName){
+        dispatcher.fireEvent('beforeOpen', applicationName);
+        dispatcher.activeApplication = app;
+        dispatcher.applicationName = applicationName;
         if (app.beforeOpen) {
             app.beforeOpen(params, directives);
         }
-        dispatcher.fireEvent('beforeOpen', applicationName);
         if(app.container) {
             dispatcher.app.appendChild(app.container);
         }
@@ -1877,8 +1895,8 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
 
     return Dispatcher;
 });
-Engine.define('Word', ['Ajax'], function(){
-    var Ajax = Engine.require('Ajax');
+Engine.define('Word', ['Rest'], function(){
+    var Rest = Engine.require('Rest');
     var onLoad = {};
     var enLaguageLoaded = false;
 
@@ -1956,11 +1974,7 @@ Engine.define('Word', ['Ajax'], function(){
         if(Word.loader) {
             Word.loader(language, onLoad[language]);
         } else {
-            Ajax.ajax(
-                {
-                    url: Word.dictionariesPath + language + '.json',
-                    type: 'get'
-                },
+            Rest.doGet(Word.dictionariesPath + language + '.json').then(
                 function(dictionary){
                     var norm = {};
                     for(var k in dictionary) {
