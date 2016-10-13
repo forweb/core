@@ -1,5 +1,5 @@
 Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
-   
+
     function Menu(defaultCallback, params){
         this.container = Dom.el('div', params || 'menu');
         this.defaultCallback = defaultCallback;
@@ -43,7 +43,7 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
             Dom.addClass(item, 'active');
         };
         if(url) {
-            var params = {href: '/' + StringUtils.normalizeText(url, '-')};
+            var params = {href: '/' + url};
             params.onclick = function (e) {
                 activate(e);
                 if (callback) {
@@ -57,11 +57,11 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
 
         this.container.appendChild(item);
         return {
-            menu: function (cn, l, c) {
-                return me.menu(cn, l, c, activate);
+            menu: function (url, l, c) {
+                return me.menu(url, l, c, activate);
             },
-            subMenu: function (cn, l, c) {
-                var out = me.menu(cn, l, c, activate);
+            subMenu: function (url, l, c) {
+                var out = me.menu(url, l, c, activate);
                 if(subMenuHolder === null) {
                     subMenuHolder = Dom.el('ul');
                     item.appendChild(subMenuHolder);
@@ -72,7 +72,7 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
                     childActivate(e);
                 };
                 if(out.link) {
-                   // Dom.removeListeners(out.link, {onclick: oldActivate});
+                    // Dom.removeListeners(out.link, {onclick: oldActivate});
                     Dom.addListeners(out.link, {onclick: activate});
                 }
                 subMenuHolder.appendChild(Dom.el('li', 'submenu', out.item));

@@ -9,13 +9,25 @@ Engine.define('Word', ['Rest'], function(){
             container = module;
             module = 'default';
         }
+        if(!strategy) {
+            strategy = 'text';
+        }
         if(typeof module !== 'string' && !container) {
             container = module;
             module = 'default';
         }
 
         var clb = function(text){
-            if(strategy && strategy != 'text') {
+            if(container.getAttribute('data-w-key') !== key) {
+                container.setAttribute('data-w-key', key);
+            }
+            if(container.getAttribute('data-w-module') !== module) {
+                container.setAttribute('data-w-module', module);
+            }
+            if(container.getAttribute('data-w-strategy') !== strategy) {
+                container.setAttribute('data-w-strategy', strategy);
+            }
+            if(strategy != 'text') {
                 if(strategy == 'append') {
                     container.appendChild(document.createTextNode(text));
                 } else {

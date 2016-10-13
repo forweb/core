@@ -12,7 +12,7 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
         this.applicationName = null;
         this.activeApplication = null;
         this.history = history;
-        this.urlResolver = urlResolver || UrlResolver;
+        this.urlResolver = urlResolver || (new UrlResolver());
         var me = this;
         var openApplication = function(){
             if(me.urlResolver) {
@@ -101,7 +101,7 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
             var path = UrlUtils.getPath();
             if(request.url !== path) {
                 var hash = document.location.hash;
-                this.history.pushState({}, title, (request.url || '/') + (hash || ''));
+                this.history.pushState({}, title, "/" + (request.url || '') + (hash || ''));
             }
         };
         
@@ -122,7 +122,6 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
 
     function initApplication (dispatcher, contructor) {
         var application;
-        if(dispatcher.applicationName)
         var placeApplication = function(applicationName, directives){
             dispatcher.placeApplication(applicationName, directives);
         };
