@@ -12,7 +12,7 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
     Menu.prototype.show = function() {
         Dom.removeClass(this.container, 'hidden');
     };
-    Menu.prototype.diactivateAll = function() {
+    Menu.prototype.deactivateAll = function() {
         for(var i = 0; i < this.menus.length; i++) {
             Dom.removeClass(this.menus[i], 'active');
         }
@@ -36,7 +36,7 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
         var activate = function(e){
             if(!_parentActivate) {
                 e.preventDefault();
-                me.diactivateAll();
+                me.deactivateAll();
             } else {
                 _parentActivate(e);
             }
@@ -52,6 +52,9 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
             };
             link = Dom.el('a', params, label);
             item.appendChild(link);
+            if(StringUtils.removeSlashes(url) === StringUtils.removeSlashes(document.location.pathname)) {
+                activate();
+            }
         }
         var subMenuHolder = null;
 

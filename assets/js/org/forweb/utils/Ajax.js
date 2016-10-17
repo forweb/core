@@ -1,14 +1,11 @@
 Engine.define('Ajax', (function () {
-    var out = {
+    var Ajax = {
         /**
          * @var object with key-value pairs with default ajax headers
          */
         headers: null
     };
-    out.ajax = function (data, resolve, reject) {
-        var xhr = out.getXhr();
-        xhr.open(data.type, data.url, true);
-        var headers = out.headers;
+    function addHeaders(xhr, headers){
         if (headers) {
             for (var i in headers) {
                 if (headers.hasOwnProperty(i)) {
@@ -16,9 +13,15 @@ Engine.define('Ajax', (function () {
                 }
             }
         }
+    }
+    Ajax.ajax = function (data, resolve, reject) {
+        var xhr = Ajax.getXhr();
+        xhr.open(data.type, data.url, true);
+        addHeaders(Ajax.headers);
+        addHeaders(data.headers);
         xhr.onload = function () {
-            if (xhr.status == 200) {
-                resolve(out.process(xhr, data.responseType), xhr);
+            if (xhr.status >199 && xhr.status < 300) {
+                resolve(Ajax.process(xhr, data.responseType), xhr);
             } else if (reject) {
                 reject(xhr)
             }
@@ -26,7 +29,7 @@ Engine.define('Ajax', (function () {
         xhr.send(data.data);
         return xhr;
     };
-    out.process = function (xhr, t) {
+    Ajax.process = function (xhr, t) {
         var response = xhr.responseText;
         if(t === 'text' || !response) {
             return response; 
@@ -37,7 +40,7 @@ Engine.define('Ajax', (function () {
     /**
      * @returns XMLHttpRequest
      */
-    out.getXhr = function () {
+    Ajax.getXhr = function () {
         var xmlhttp = null;
         try {
             xmlhttp = new XMLHttpRequest();
@@ -54,5 +57,5 @@ Engine.define('Ajax', (function () {
         }
         return xmlhttp;
     };
-    return out;
+    return Ajax;
 }));

@@ -4,10 +4,9 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
     var UrlUtils = Engine.require('UrlUtils');
     var UrlResolver = Engine.require('UrlResolver');
 
-    var Dispatcher = function(appNode, context, config, urlResolver){
+    var Dispatcher = function(appNode, context, urlResolver){
         this.app = typeof appNode === 'string' ? Dom.id(appNode) : appNode;
         this.context = context || {};
-        this.config = config || {};
         this.applications = {};
         this.applicationName = null;
         this.activeApplication = null;
@@ -126,11 +125,11 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
             dispatcher.placeApplication(applicationName, directives);
         };
         if(typeof contructor == "function") {
-            application = new contructor(dispatcher.context, dispatcher.config, placeApplication);
+            application = new contructor(dispatcher.context, placeApplication);
         } else {
             application = contructor;
             if(application.init) {
-                application.init(dispatcher.context, dispatcher.config, placeApplication);
+                application.init(dispatcher.context, placeApplication);
             }
         }
         return application;
