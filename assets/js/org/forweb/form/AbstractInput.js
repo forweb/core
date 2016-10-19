@@ -8,7 +8,37 @@ Engine.define("AbstractInput", ['Dom', 'StringUtils'], (function(Dom, StringUtil
         this.errors = null;
         this.errorsData = null;
     }
-    
+
+    /**
+     * Remove errors from input.
+     * If first argument is null or undefined, all errors will be removed
+     * if first argument is string, only error of this type will be removed
+     * if first argument is array, all errors from this array will be removed
+     * @param errorKeys
+     */
+    AbstractInput.prototype.removeErrors = function(errorKeys) {
+        var errorsToShow = {};
+        if(this.errorsData) {
+            if(!errorKeys) {
+                errorKeys = [];
+            }
+            if(typeof errorKeys === 'string') {
+                errorKeys = [errorKeys];
+            }
+
+            for (var key in this.errorsData) {
+                if (this.errorsData.hasOwnProperty(key)) {
+                    if(errorKeys.indexOf(key) === -1) {
+                        errorsToShow[key] = this.errorsData[key];
+                    }
+                }
+            }
+        }
+        this.errorsData = {};
+        if(Object.keys(errorsToShow).length > 0) {
+            this.addError(errorsToShow);
+        }
+    };
     AbstractInput.prototype.addError = function(errors) {
         if(this.errors === null) {
             this.errors = Dom.el('div', 'formfield-errors');
@@ -81,7 +111,7 @@ Engine.define("AbstractInput", ['Dom', 'StringUtils'], (function(Dom, StringUtil
         }
         for(var k in params) {
             if(!params.hasOwnProperty(k))continue;
-            if(k.indexOf('on') === 0) {
+            if(typeof params[k] === 'function') {
                 out[k] = params[k];
             }
         }

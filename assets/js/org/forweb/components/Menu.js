@@ -45,7 +45,7 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
         if(url) {
             var params = {href: '/' + url};
             params.onclick = function (e) {
-                activate(e);
+                if(e)activate(e);
                 if (callback) {
                     callback(url, e);
                 }

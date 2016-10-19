@@ -10,6 +10,12 @@ Engine.define('Text', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
     Text.prototype.getInputType = function() {
         return 'text';
     };
+    Text.prototype.toString = function() {
+        return "Text(" + this.input.name + ")";
+    };
+    Text.toString = function() {
+        return "Text"
+    };
     Text.prototype.constructor = Text;
     return Text;
 });

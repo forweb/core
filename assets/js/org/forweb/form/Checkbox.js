@@ -26,6 +26,13 @@ Engine.define('Checkbox', ['Dom', 'AbstractInput'], function(Dom, AbstractInput)
         delete out.value;
         return out;
     };
+    Checkbox.prototype.toString = function() {
+        return "Radio(" + this.input.name + ")";
+    };
+    Checkbox.toString = function() {
+        return "Radio"
+    };
     Checkbox.prototype.constructor = Checkbox;
+
     return Checkbox;
 });

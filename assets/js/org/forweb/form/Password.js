@@ -25,6 +25,12 @@ Engine.define('Password', ['Dom', 'AbstractInput'], function(Dom, AbstractInput)
     Password.prototype.getInputType = function() {
         return this.showChars ? 'text' : 'password';
     };
+    Password.prototype.toString = function() {
+        return "Password(" + this.input.name + ")";
+    };
+    Password.toString = function() {
+        return "Password"
+    };
     Password.prototype.constructor = Password;
     return Password;
 });

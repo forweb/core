@@ -1,8 +1,6 @@
 Engine.define('Select', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
     function Select(params) {
         AbstractInput.apply(this, arguments);
-        this.input.remove();
-        delete this.input;
         
         this.params = params;
         this.options = params.options;
@@ -16,7 +14,7 @@ Engine.define('Select', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
         for(var i = 0; i < this.options.length; i++) {
             var opt = this.options[i];
             var option = Dom.el('option', {value: opt.value}, opt.label);
-            Dom.update(this.input, option);
+            Dom.append(this.input, option);
         }
     };
     Select.prototype.getElementType = function() {
@@ -26,5 +24,11 @@ Engine.define('Select', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
         return null;
     };
 
+    Select.prototype.toString = function() {
+        return "Select(" + this.input.name + ")";
+    };
+    Select.toString = function() {
+        return "Select"
+    };
     return Select;
 });

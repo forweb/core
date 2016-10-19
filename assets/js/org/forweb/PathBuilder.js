@@ -2,7 +2,7 @@ Engine.define('PathBuilder', function(){
     
     function PathBuilder(version, defaultPath) {
         this.version = version;
-        this.defaultPath = defaultPath || 'assets/js/org/forweb/'
+        this.defaultPath = defaultPath || 'assets/js/org/forweb/';
     }
     PathBuilder.prototype.buildPath = function(module) {
         var path;
@@ -35,6 +35,7 @@ Engine.define('PathBuilder', function(){
             case 'Select':
             case 'Password':
             case 'Checkbox':
+            case 'Validation':
             case 'GenericForm':
             case 'AbstractInput':
                 path = 'form/' + module + '.js';

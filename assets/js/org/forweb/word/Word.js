@@ -54,7 +54,7 @@ Engine.define('Word', ['Rest'], function(){
         var lang = Word.dictionaries[language];
         if(lang) {
             var mod = lang[module] || lang['default'] || {};
-            return mod[key];
+            return mod[key] !== undefined ? mod[key] : ((module ? module : 'default')  + ":" + key);
         } else {
             return null;
         }

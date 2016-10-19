@@ -18,6 +18,13 @@ Engine.define('Radio', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
     Radio.prototype.update = function(value) {
         this.optionsContainer.innerHTML = '';
         this.inputs = [];
+        var listeners = {};
+        for(var key in this.params) {
+            if(!this.params.hasOwnProperty(key))continue;
+            if(typeof this.params[key] === 'function'){
+                listeners[key] = this.params[key];
+            }
+        }
         var name = this.params.name;
         for(var i = 0; i < this.options.length; i++) {
             var opt = this.options[i];
@@ -30,13 +37,6 @@ Engine.define('Radio', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
             if(opt.value === this.getValue() || opt.value === value) {
                 input.checked = true;
             }
-            var listeners = {};
-            for(var key in this.params) {
-                if(!this.params.hasOwnProperty(key))continue;
-                if((key + "").indexOf('on') === 0 && typeof this.params[key] === 'function'){
-                    listeners[key] = this.params[key];
-                }
-            }
             Dom.addListeners(input, listeners);
             this.inputs.push(input);
             this.optionsContainer.appendChild(
@@ -48,7 +48,7 @@ Engine.define('Radio', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
         return 'input'
     };
     Radio.prototype.getInputType = function() {
-        return '';
+        return null;
     };
 
     Radio.prototype.getValue = function() {
@@ -58,6 +58,13 @@ Engine.define('Radio', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
             }
         }
         return '';
+    };
+
+    Radio.prototype.toString = function() {
+        return "Radio(" + this.input.name + ")";
+    };
+    Radio.toString = function() {
+        return "Radio"
     };
     return Radio;
 });

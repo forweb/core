@@ -1096,7 +1096,7 @@ Engine.define('Menu', ['Dom', 'StringUtils'], function(Dom, StringUtils){
         this.menus.push(item);
         var activate = function(e){
             if(!_parentActivate) {
-                e.preventDefault();
+                if(e)e.preventDefault();
                 me.deactivateAll();
             } else {
                 _parentActivate(e);
@@ -1333,7 +1333,7 @@ Engine.define("AbstractInput", ['Dom', 'StringUtils'], (function(Dom, StringUtil
         }
         for(var k in params) {
             if(!params.hasOwnProperty(k))continue;
-            if(k.indexOf('on') === 0) {
+            if(typeof params[k] === 'function') {
                 out[k] = params[k];
             }
         }
@@ -1376,19 +1376,29 @@ Engine.define('Checkbox', ['Dom', 'AbstractInput'], function(Dom, AbstractInput)
         delete out.value;
         return out;
     };
+    Checkbox.prototype.toString = function() {
+        return "Radio(" + this.input.name + ")";
+    };
+    Checkbox.toString = function() {
+        return "Radio"
+    };
     Checkbox.prototype.constructor = Checkbox;
     return Checkbox;
 });
 Engine.define('FieldMeta', function(){
     function FieldMeta(params){
         if(!params)params = {};
-        this.ignore = params.ignore || false;//this field will be ignored
-        this.render = params.render || null;//render for current field. Should be component with container
+        this.ignore = params.ignore || false;//this field will be ignored on form building
+        this.render = params.render || null;//Function for component render. Return type should have "AbstractInput" as parent.
         this.wrapper = params.wrapper || null;//if defined, all content will be putted inside of it. DOM node or function
         this.contentBefore = params.contentBefore || null;
         this.contentAfter = params.contentAfter || null;
         this.onchange = params.onchange || null;//callback function for onchange
         this.validations = params.validations || null;//validation rules
+        this.removeErrors = params.removeErrors || null;//custom remove errors function
+        this.errorMessages = params.errorMessages || null;//error messages holder. Should be object with key-value pairs or string
+        this.options = params.options || null;//required field for "select", "radio", "checkboxes" component
+        this.type = params.type || "text";//if render method not specified, this type will be used for component rendering
     }
     return FieldMeta;
 });
@@ -1404,14 +1414,18 @@ Engine.define('Text', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
     Text.prototype.getInputType = function() {
         return 'text';
     };
+    Text.prototype.toString = function() {
+        return "Text(" + this.input.name + ")";
+    };
+    Text.toString = function() {
+        return "Text"
+    };
     Text.prototype.constructor = Text;
     return Text;
 });
 Engine.define('Select', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
     function Select(params) {
         AbstractInput.apply(this, arguments);
-        this.input.remove();
-        delete this.input;
 
         this.params = params;
         this.options = params.options;
@@ -1425,7 +1439,7 @@ Engine.define('Select', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
         for(var i = 0; i < this.options.length; i++) {
             var opt = this.options[i];
             var option = Dom.el('option', {value: opt.value}, opt.label);
-            Dom.update(this.input, option);
+            Dom.append(this.input, option);
         }
     };
     Select.prototype.getElementType = function() {
@@ -1433,6 +1447,12 @@ Engine.define('Select', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
     };
     Select.prototype.getInputType = function() {
         return null;
+    };
+    Select.prototype.toString = function() {
+        return "Select(" + this.input.name + ")";
+    };
+    Select.toString = function() {
+        return "Select"
     };
 
     return Select;
@@ -1489,7 +1509,6 @@ Engine.define('Radio', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
     Radio.prototype.getInputType = function() {
         return '';
     };
-
     Radio.prototype.getValue = function() {
         for(var i = 0; i < this.inputs.length; i++) {
             if(this.inputs[i].checked) {
@@ -1497,6 +1516,12 @@ Engine.define('Radio', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
             }
         }
         return '';
+    };
+    Radio.prototype.toString = function() {
+        return "Radio(" + this.input.name + ")";
+    };
+    Radio.toString = function() {
+        return "Radio"
     };
     return Radio;
 });
@@ -1527,19 +1552,47 @@ Engine.define('Password', ['Dom', 'AbstractInput'], function(Dom, AbstractInput)
     Password.prototype.getInputType = function() {
         return this.showChars ? 'text' : 'password';
     };
+    Password.toString = function() {
+        return "Password"
+    };
     Password.prototype.constructor = Password;
+
     return Password;
 });
-Engine.define('GenericForm', ['Dom', 'Text'], function(){
+Engine.define('Textarea', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
+    function Textarea(params) {
+        AbstractInput.apply(this, arguments);
+    }
+    Textarea.prototype = Object.create(AbstractInput.prototype);
+
+    Textarea.prototype.getElementType = function() {
+        return 'textarea'
+    };
+    Textarea.prototype.getInputType = function() {
+        return null;
+    };
+    Textarea.toString = function() {
+        return "Textarea"
+    };
+    Textarea.prototype.constructor = Textarea;
+    return Textarea;
+});
+Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Checkbox', 'Validation', 'Password'], function(){
 
     var Dom = Engine.require('Dom');
     var Text = Engine.require('Text');
+    var Radio = Engine.require('Radio');
+    var Select = Engine.require('Select');
+    var Checkbox = Engine.require('Checkbox');
+    var Password = Engine.require('Password');
+    var Textarea = Engine.require('Textarea');
+    var Validation = Engine.require('Validation');
 
     function GenericForm(data, meta, onSubmit) {
         if(!onSubmit)throw 'onSubmit is required for generic form';
         var html = [];
         var me = this;
-        this.fields = [];
+        this.fields = {};
         this.model = {};
         this.onSubmitSuccess = onSubmit;
         if(!meta) {
@@ -1556,8 +1609,7 @@ Engine.define('GenericForm', ['Dom', 'Text'], function(){
                 if(m.ignore)continue;
                 field = m.render ?
                     (typeof m.render === "function" ? m.render(this.onChange, key, value) : m.render) :
-                    this.buildText(key, value, m.onchange);
-                this.fields.push(field);
+                    this.buildInput(key, value, m.onchange);
                 var content = [
                     typeof m.contentBefore === 'function' ? m.contentBefore(key, value) : m.contentBefore,
                     field.container,
@@ -1567,17 +1619,17 @@ Engine.define('GenericForm', ['Dom', 'Text'], function(){
                     if(typeof m.wrapper === 'function') {
                         html.push(m.wrapper(content, key, value));
                     } else {
-                        Dom.append(m.wrapper(content));
+                        Dom.append(m.wrapper, content);
                         html.push(m.wrapper);
                     }
                 } else {
                     html = html.concat(content);
                 }
             } else {
-                field = this.buildText(key, value);
-                this.fields.push(field);
+                field = this.buildInput(key, value);
                 html.push(field.container)
             }
+            this.fields[key] = field;
         }
 
         this.submit = Dom.el('div', null, Dom.el('input', {type: 'submit', class: 'primary', value: 'Submit'}));
@@ -1595,29 +1647,103 @@ Engine.define('GenericForm', ['Dom', 'Text'], function(){
     };
     GenericForm.prototype.validate = function(){
         if(this.meta) {
+            var out = true;
             for(var key in this.meta) {
                 if(!this.meta.hasOwnProperty(key))continue;
-                var m = this.meta[key];
-                if(m.validations) {
+                var meta = this.meta[key];
+                var value = this.model[key];
+                var field = this.fields[key];
 
+                if(meta.removeErrors) {
+                    meta.removeErrors()
+                } else if(field.removeErrors) {
+                    field.removeErrors();
+                }
+                if(meta.validations) {
+                    var errorKeys = Validation.validate(value, meta.validations);
+
+                    if(errorKeys.length > 0) {
+                        out = false;
+                        var messages = this.findErrorMessages(meta, errorKeys);
+                        if(meta.addError) {
+                            meta.addError(messages);
+                        } else if(field.addError){
+                            field.addError(messages);
+                        }
+                    }
                 }
             }
-            return true;
+            return out;
         } else {
             return true;
         }
     };
+
+    GenericForm.prototype.findErrorMessages = function(meta, errorKeys){
+        var out = {};
+        for(var key in errorKeys) {
+            if(errorKeys.hasOwnProperty(key)) {
+                if(meta.errorMessages && meta.errorMessages[key] !== undefined ){
+                    out[key] = meta.errorMessages[key];
+                } else if(Validation.messages[key] !== undefined) {
+                    out[key] = Validation.messages[key];
+                } else {
+                    out[key] = Validation.messages['default'];
+                }
+            }
+        }
+        return {};
+    };
     GenericForm.prototype.onChange = function(key, value){
         this.model[key] = value;
     };
-    GenericForm.prototype.buildText = function(key, value, onchange){
+    GenericForm.prototype.buildInput = function(key, value, onchange, meta){
         var me = this;
-        var out = new Text({name: key, value: value, onchange: function(e){
+        var out = null;
+        var params = {name: key, value: value, onchange: function(e){
             me.onChange(key, out.getValue());
             if(onchange){
-                onchange();
+                onchange(e);
             }
-        }});
+        }};
+        if(meta && meta.options) {
+            params.options = meta.options;
+        }
+        var metaType = meta && meta.type ? meta.type : null;
+        if(metaType) {
+            switch (metaType.toLowerCase()) {
+                case 'text':
+                    out = new Text(params);
+                    break;
+                case 'textarea':
+                    out = new Textarea(params);
+                    break;
+                case 'checkbox':
+                    out = new Checkbox(params);
+                    break;
+                case 'radio':
+                    out = new Radio(params);
+                    break;
+                case 'select':
+                    out = new Select(params);
+                    break;
+                case 'password':
+                    out = new Password(params);
+                    break;
+                default:
+                    throw "Unknown type for form component - " +metaType+". Use one of the following: [text, textarea, checkbox, radio, select, password]"
+            }
+        } else if(meta.options) {
+            if(meta.options.length > 3) {
+                out = new Select(params)
+            } else {
+                out = new Radio(params);
+            }
+        } else if(typeof value === 'boolean') {
+            out = new Checkbox(params)
+        } else {
+            out = new Text(params);
+        }
         return out;
     };
 
@@ -1952,7 +2078,7 @@ Engine.define('Word', ['Rest'], function(){
         var lang = Word.dictionaries[language];
         if(lang) {
             var mod = lang[module] || lang['default'] || {};
-            return mod[key];
+            return mod[key] !== undefined ? mod[key] : ((module ? module : 'default')  + ":" + key);
         } else {
             return null;
         }
