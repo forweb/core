@@ -18,10 +18,7 @@ Engine.define("AbstractInput", ['Dom', 'StringUtils'], (function(Dom, StringUtil
      */
     AbstractInput.prototype.removeErrors = function(errorKeys) {
         var errorsToShow = {};
-        if(this.errorsData) {
-            if(!errorKeys) {
-                errorKeys = [];
-            }
+        if(this.errorsData && errorKeys) {
             if(typeof errorKeys === 'string') {
                 errorKeys = [errorKeys];
             }
@@ -35,9 +32,7 @@ Engine.define("AbstractInput", ['Dom', 'StringUtils'], (function(Dom, StringUtil
             }
         }
         this.errorsData = {};
-        if(Object.keys(errorsToShow).length > 0) {
-            this.addError(errorsToShow);
-        }
+        this.addError(errorsToShow);
     };
     AbstractInput.prototype.addError = function(errors) {
         if(this.errors === null) {
@@ -56,12 +51,14 @@ Engine.define("AbstractInput", ['Dom', 'StringUtils'], (function(Dom, StringUtil
                 }
             }
         }
-        
+        var out = {};
         for(var k in this.errorsData) {
             if(this.errorsData.hasOwnProperty(k) && this.errorsData[k]) {
-                this.errors.appendChild(Dom.el('div', 'err', this.errorsData[k]));
+                out[k] = Dom.el('div', 'err', this.errorsData[k]);
+                this.errors.appendChild(out[k]);
             }
         }
+        return out;
     };
     
     AbstractInput.prototype.buildLabel = function(params) {
@@ -73,14 +70,7 @@ Engine.define("AbstractInput", ['Dom', 'StringUtils'], (function(Dom, StringUtil
         } else {
             content = StringUtils.normalizeText(params.name);
         }
-        var attr = {};
-        if(params.id) {
-            attr.id = params.id;
-        } else if(params.formId) {
-            attr.id = params.formId + "_" + params.name;
-        } else {
-            attr.id = params.name;
-        }
+        var attr = {for: this.input.id};
         return Dom.el('label', attr, content);
     };
     AbstractInput.prototype.getInputType = function() {

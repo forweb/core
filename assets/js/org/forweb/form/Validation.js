@@ -15,9 +15,9 @@ Engine.define("Validation", function () {
                 cache[rules] = object;
             }
             rules = cache[rules];
-        } else if (typeof rules.push !== 'function' && typeof rules.pop !== 'function') {
+        } else if (!Array.isArray(rules)) {
             for (var k in rules) {
-                if (rules.hasOwnProperty(k) && !$.isArray(rules[k])) {
+                if (rules.hasOwnProperty(k) && !Array.isArray(rules[k])) {
                     rules[k] = [rules[k]]
                 }
             }
@@ -35,13 +35,13 @@ Engine.define("Validation", function () {
             rules = _normalizeRules(rules);
             var errors = [];
             for (var rule in rules) {
-                if (rules.hasOwnProperty(rule) && Validation.Rules.hasOwnProperty(rule)) {
-                    var isValid = Validation.Rules[rule].apply(Validation.Rules, [].concat(value, rules[rule]));
+                if (rules.hasOwnProperty(rule) && Validation.rules.hasOwnProperty(rule)) {
+                    var isValid = Validation.rules[rule].apply(Validation.rules, [].concat(value, rules[rule]));
                     if (!isValid) {
                         errors.push(rule);
                     }
                 } else {
-                    throw "Unknown validation rule: " + rule + ". Please use one of the following: " + Object.keys(Validation.Rules);
+                    throw "Unknown validation rule: " + rule + ". Please use one of the following: " + Object.keys(Validation.rules);
                 }
             }
             return errors;
@@ -55,17 +55,16 @@ Engine.define("Validation", function () {
             number: 'Value is not a number',
             positive: 'Value is not a positive number',
             negative: 'Value is not a negative number',
-            phone: 'Not valid phone format. Only "-" characters and numbers allowed.',
-            zip: 'Not valid zip code format. Only "-" characters and numbers allowed.',
             time: 'Invalid time format',
             dateString: 'Invalid date format.',
             timeString: 'Invalid time format, must be hh:mm:ss.',
             'default': 'Something wrong.'
         },
-        Rules: {
+        rules: {
             required: function (v, flag) {
+                if(!v) return false;
                 if (flag === 'lazy') {
-                    return ((v === '0' || v === ' ') ? false : !!v)
+                    return ((v === '0' || (v.trim && v.trim() === '')) ? false : !!v)
                 } else if (flag === 'checkboxes') {
                     for (var value in v) {
                         if (v.hasOwnProperty(value) && v[value]) {
@@ -78,15 +77,15 @@ Engine.define("Validation", function () {
                 }
             },
             max: function (v, limit) {
-                if (!v)v = 0;
+                if(!v && v !== 0)return true;
                 return parseInt(v) <= limit;
             },
             min: function (v, limit) {
-                if (!v)v = 0;
+                if(!v && v !== 0)return true;
                 return parseInt(v) >= limit;
             },
             length: function (v, min, max) {
-                if (!v)v = "";
+                if(!v && v !== 0)return true;
                 return (max === undefined ? true : v.length <= max) && v.length >= min;
             },
             pattern: function (v, pattern) {
@@ -94,54 +93,18 @@ Engine.define("Validation", function () {
             },
             number: function (v) {
                 if (!v)return true;
-                return Validation.Rules.pattern(v, /^(-?\d*)$/g);
+                return Validation.rules.pattern(v, /^(-?\d*)$/g);
             },
             positive: function (v) {
-                return Validation.Rules.pattern(v, /^(\d*)$/g);
+                return Validation.rules.pattern(v, /^(\d*)$/g);
             },
             negative: function (v) {
-                return Validation.Rules.pattern(v, /^(-\d*)$/g);
+                return Validation.rules.pattern(v, /^(-\d*)$/g);
             },
             email: function (v) {
-                return Validation.Rules.pattern(v, IS_EMAIL);
+                return Validation.rules.pattern(v, IS_EMAIL);
             },
-            phone: function (v) {
-                if (v) {
-                    if (typeof v === 'string') {
-                        var numbers = v.replace(/-/g, '');
-                        return Validation.Rules.number(numbers);
-                    }
-                    return typeof v === 'number';
-                }
-                return true;
-            },
-
-            zip: function (v) {
-                return Validation.Rules.phone(v);
-            },
-            time: function (v, separator, limit) {
-                if (!v)return true;
-                if (!separator)separator = ':';
-                var parts = v.split(separator);
-                if (parts.length == 2) {
-                    if (!limit)limit = 13;
-                    limit = parseInt(limit);
-                    var hours = parseInt(parts[0]);
-                    var minutes = parseInt(parts[1]);
-                    if (hours < 0 || hours > limit) {
-                        return false;
-                    }
-                    return !(minutes < 0 || minutes > 59);
-                } else {
-                    return false;
-                }
-            },
-            dateString: function (v, format, separator) {
-                if (!v)return true;
-                var calendar = DateUtils.parseDate(v, separator, format);
-                return calendar != null;
-            },
-            timeString: function (v) {
+            time: function (v) {
                 if (!v)return true;
                 var test = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
                 return test.test(v);

@@ -1,4 +1,12 @@
 Engine.define('Dom', (function () {
+
+    if(typeof Element !== undefined) {
+        Element.prototype.isDomElement = true;
+    }
+    if(typeof HTMLElement !== undefined) {
+        HTMLElement.prototype.isDomElement = true;
+    }
+
     var Dom = {};
     /**
      * @param type string
@@ -50,14 +58,19 @@ Engine.define('Dom', (function () {
             el.className = attr;
         } else if (attr)for (var i in attr) {
             if (!attr.hasOwnProperty(i))continue;
+            var value = attr[i];
             if (typeof attr[i] == 'function') {
                 var key = i;
                 if (key.indexOf("on") === 0) {
                     key = key.substring(2);
                 }
-                el.addEventListener(key, attr[i]);
+                el.addEventListener(key, value);
             } else {
-                el.setAttribute(i, attr[i])
+                if(i === 'value') {
+                    el.value = value;
+                } else {
+                    el.setAttribute(i, value)
+                }
             }
         }
     };
@@ -73,7 +86,14 @@ Engine.define('Dom', (function () {
                     }
                 }
             } else {
-                o.appendChild(content)
+                //used prototyped property
+                if(content.isDomElement) {
+                    o.appendChild(content)
+                } else if(content.container) {
+                    Dom.append(o, content.container);
+                } else {
+                    throw "Can't append object"
+                }
             }
         }
     };
@@ -160,7 +180,14 @@ Engine.define('Dom', (function () {
                     }
                 }
             } else {
-                el.insertBefore(content, before);
+                //used prototyped property
+                if(content.isDomElement) {
+                    el.insertBefore(content, before);
+                } else if(content.container) {
+                    Dom.insert(el, content.container, before);
+                } else {
+                    throw "Can't inesert object"
+                }
             }
         }
     };
