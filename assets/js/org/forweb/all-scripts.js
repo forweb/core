@@ -2007,7 +2007,7 @@ Engine.define('UrlResolver', ['StringUtils'], function(StringUtils) {
     };
     return UrlResolver;
 });
-Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Checkbox', 'Validation', 'Password', 'Word'], function(){
+Engine.define('AbstractFieldsContainer', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Checkbox', 'Validation', 'Password', 'Word'], function(){
 
     var Dom = Engine.require('Dom');
     var Word = Engine.require('Word');
@@ -2019,21 +2019,14 @@ Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Che
     var Textarea = Engine.require('Textarea');
     var Validation = Engine.require('Validation');
 
-    function GenericForm(data, fieldsMeta, formMeta) {
-        if(formMeta === undefined && typeof fieldsMeta === 'function') {
-            formMeta = {onSubmit: fieldsMeta};
-            fieldsMeta = null;
-        }
-        if(typeof formMeta === 'function') {
-            formMeta = {onSubmit: formMeta};
-        }
-        if(!formMeta.onSubmit)throw 'onSubmit is required for generic form';
+    function AbstractFieldsContainer(data, fieldsMeta, containerMeta) {
+
         var html = [];
-        var me = this;
         this.fields = {};
-        this.word = formMeta.wordKey ? Word.create(formMeta.wordKey) : null;
+        this.word = containerMeta.wordKey ? Word.create(containerMeta.wordKey) : null;
         this.model = data;
-        this.onSubmitSuccess = formMeta.onSubmit;
+        this.containerMeta = containerMeta;
+
         if(!fieldsMeta) {
             fieldsMeta = {};
         }
@@ -2041,7 +2034,6 @@ Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Che
         for(var key in data) {
             if(!data.hasOwnProperty(key))continue;
             var value = data[key];
-            this.model[key] = value;
             var field;
             var fieldWordLabel = null;
             var fieldMeta = fieldsMeta[key];
@@ -2078,41 +2070,50 @@ Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Che
                 html.push(field.container)
             }
 
-            if(formMeta.wordKey && field.label) {
+            if(containerMeta.wordKey && field.label) {
                 this.word(fieldWordLabel || "label_" + key, field.label)
             }
             this.fields[key] = field;
         }
-
-        this.submit = Dom.el('div', null, Dom.el('input', {type: 'submit', class: 'primary', value: 'Submit'}));
-        this.container = Dom.el('form', null, [html, this.submit]);
-        this.container.onsubmit = function(e){
-            me.onSubmit(e)
-        }
+        this.container = this.createContainer();
+        Dom.append(this.container, html);
     }
 
-    GenericForm.inputs = {
-        text: Text,
-        textarea: Textarea,
-        checkbox: Checkbox,
-        radio: Radio,
-        select: Select,
-        password: Password
-    };
-
-    GenericForm.prototype.onSubmit = function(e){
-        if(e)e.preventDefault();
-        if(this.validate()) {
-            this.onSubmitSuccess(this.model)
+    AbstractFieldsContainer.resolvers = [
+        function(params, meta, metaType){
+            return (metaType === 'select') || params.options && params.options.length > 3 ? new Select(params) : null;
+        },
+        function(params, meta, metaType) {
+            return (metaType === 'radio') || params.options && params.options.length > 3 ? new Radio(params) : null;
+        },
+        function(params, meta, metaType) {
+            return (metaType === 'checkbox') || typeof params.value === 'boolean' ? new Checkbox(params) : null;
+        },
+        function(params, meta, metaType) {
+            return metaType === 'password' ||
+            (typeof params.name === 'string' && params.name.toLowerCase().indexOf('pass') > -1) ?
+                new Password(params) : null;
+        },
+        function(params, meta, metaType) {
+            return metaType === 'textarea' ||
+            (typeof params.value === 'string' && (params.value.indexOf('\n')  > -1 || params.value.length > 40)) ?
+                new Textarea(params) : null;
+        },
+        function(params, meta, metaType) {
+            return metaType === 'text' || typeof params.value !== 'object' ? new Text(params) : null
         }
-    };
-    GenericForm.prototype.validateField = function(fieldName){
+    ];
+
+    AbstractFieldsContainer.prototype.validateField = function(fieldName){
         var meta = this.meta[fieldName];
-        if(!meta || meta.ignore === false) {
+        var field = this.fields[fieldName];
+        if(field instanceof AbstractFieldsContainer) {
+            return field.validate();
+        }
+        if(!meta || meta.ignore === true) {
             return true;
         }
         var value = this.model[fieldName];
-        var field = this.fields[fieldName];
 
         if(meta.removeErrors) {
             meta.removeErrors()
@@ -2151,7 +2152,7 @@ Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Che
         }
         return true;
     };
-    GenericForm.prototype.validate = function(){
+    AbstractFieldsContainer.prototype.validate = function(){
         if(this.meta) {
             var formValidation = true;
             for(var key in this.meta) {
@@ -2167,7 +2168,7 @@ Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Che
         }
     };
 
-    GenericForm.prototype.findErrorMessages = function(meta, errorKeys){
+    AbstractFieldsContainer.prototype.findErrorMessages = function(meta, errorKeys){
         var out = {};
         for(var i = 0; i < errorKeys.length; i++) {
             var key = errorKeys[i];
@@ -2183,11 +2184,11 @@ Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Che
         }
         return out;
     };
-    GenericForm.prototype.onChange = function(key, value){
+    AbstractFieldsContainer.prototype.onChange = function(key, value){
         this.model[key] = value;
         this.validateField(key);
     };
-    GenericForm.prototype.buildInput = function(key, value, meta){
+    AbstractFieldsContainer.prototype.buildInput = function(key, value, meta){
         var me = this;
         var out = null;
         var listeners = null;
@@ -2237,24 +2238,116 @@ Engine.define('GenericForm', ['Dom', 'Text', 'Textarea', 'Radio', 'Select', 'Che
             }
         };
 
-        if(metaType) {
-            var clazz = GenericForm.inputs[metaType.toLowerCase()];
-            if(clazz === undefined) {
-                throw "Unknown type for form component - " +metaType+". Use one of the following: [text, textarea, checkbox, radio, select, password]"
+
+        for(var i = 0; i < AbstractFieldsContainer.resolvers.length; i++) {
+            out = AbstractFieldsContainer.resolvers[i](params, meta, metaType);
+            if(out != null) {
+                break;
             }
-        } else if(params.options) {
-            if(params.options.length > 3) {
-                clazz = Select
-            } else {
-                clazz = Radio;
-            }
-        } else if(typeof value === 'boolean') {
-            clazz = Checkbox;
-        } else {
-            clazz = Text;
         }
-        out = new clazz(params);
-        return out;
+        if(out != null) {
+            return out;
+        } else {
+            throw "Can't instantiate field for " - params.value;
+        }
+    };
+
+    return AbstractFieldsContainer;
+});
+Engine.define('GenericFieldset', ['Dom', 'AbstractFieldsContainer'], function(){
+
+    var Dom = Engine.require('Dom');
+    var AbstractFieldsContainer = Engine.require('AbstractFieldsContainer');
+
+
+    function GenericFieldset(data, fieldsMeta, formMeta) {
+        AbstractFieldsContainer.apply(this, arguments);
+    }
+    GenericFieldset.prototype = Object.create(AbstractFieldsContainer.prototype);
+
+
+    AbstractFieldsContainer.resolvers.unshift(function(params, meta, metaType) {
+        return metaType === 'fieldset' || typeof params.value === 'object' ?
+            new GenericFieldset(params.value, meta.metaData, meta) : null
+    });
+
+    GenericFieldset.prototype.createContainer = function(){
+        var attr = {};
+        var meta = this.containerMeta || {};
+        if(meta.id)attr.id = meta.id;
+        if(meta.class)attr.class = meta.class;
+        var legend;
+
+        if(meta.legend === false) {
+            legend = null;
+        } else if(typeof meta.legend === 'string') {
+            legend = Dom.el('legend', null, meta.legend);
+        }
+        if(this.word && meta.wordLegend) {
+            this.word(meta.wordLegend, legend);
+        } else if(!legend && meta.legend) {
+            legend = meta.legend;
+        }
+        return Dom.el('fieldset', attr, legend);
+    };
+
+    return GenericFieldset;
+});
+Engine.define('GenericForm', ['AbstractFieldsContainer', 'Dom'], function(){
+
+    var Dom = Engine.require('Dom');
+    var AbstractFieldsContainer = Engine.require('AbstractFieldsContainer');
+
+    function GenericForm(data, fieldsMeta, formMeta) {
+        AbstractFieldsContainer.apply(
+            this,
+            GenericForm.prepareArguments(data, fieldsMeta, formMeta)
+        );
+        if(!formMeta)formMeta = fieldsMeta;
+        if(formMeta.submitButton === false) {
+            this.submit = null;
+        } else if(formMeta.submitButton) {
+            this.submit = formMeta.submitButton;
+        } else {
+            this.submit = Dom.el('div', null, Dom.el('input', {type: 'submit', class: 'primary', value: 'Submit'}));
+        }
+        Dom.append(this.container, this.submit);
+    }
+    GenericForm.prototype = Object.create(AbstractFieldsContainer.prototype);
+
+    GenericForm.prepareArguments = function(data, fieldsMeta, formMeta) {
+        if(formMeta === undefined) {
+            formMeta = fieldsMeta;
+            fieldsMeta = null;
+        }
+        if(typeof formMeta === 'function') {
+            formMeta = {onSubmit: formMeta};
+        }
+        if(!formMeta.onSubmit)throw 'onSubmit is required for generic form';
+        return [data, fieldsMeta, formMeta];
+    };
+
+    GenericForm.prototype.createContainer = function(){
+        var me = this;
+        var attr = {onsubmit: function(e){
+            me.onSubmit(e)
+        }};
+        var meta = this.containerMeta || {};
+        if(meta.class)attr.class = meta.class;
+        if(meta.id)attr.id = meta.id;
+        var title = null;
+        if(typeof meta.title === 'string') {
+            title = Dom.el('h3', null, meta.title);
+        } else if (meta.title) {
+            title = meta.title;
+        }
+        return Dom.el('form', attr, title);
+    };
+    GenericForm.prototype.onSubmit = function(e){
+        if(e)e.preventDefault();
+        if(this.validate()) {
+            this.containerMeta.onSubmit(this.model)
+        }
     };
 
     return GenericForm;

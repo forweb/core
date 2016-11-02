@@ -3,6 +3,7 @@ Engine.define('Text', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
         AbstractInput.apply(this, arguments);
     }
     Text.prototype = Object.create(AbstractInput.prototype);
+    Text.prototype.constructor = Text;
     
     Text.prototype.getElementType = function() {
         return 'input'
@@ -16,6 +17,5 @@ Engine.define('Text', ['Dom', 'AbstractInput'], function(Dom, AbstractInput) {
     Text.toString = function() {
         return "Text"
     };
-    Text.prototype.constructor = Text;
     return Text;
 });
