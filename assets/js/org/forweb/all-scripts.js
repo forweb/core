@@ -2375,6 +2375,7 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
         };
         Dom.addListeners({onpopstate: openApplication});
         this.events = null;
+        context.dispatcher = this;
     };
 
     Dispatcher.prototype.addMapping = function(className, url) {
@@ -2475,15 +2476,12 @@ Engine.define('Dispatcher', ['Dom', 'UrlResolver', 'UrlUtils'], function () {
 
     function initApplication (dispatcher, contructor) {
         var application;
-        var placeApplication = function(applicationName, directives){
-            dispatcher.placeApplication(applicationName, directives);
-        };
         if(typeof contructor == "function") {
-            application = new contructor(dispatcher.context, placeApplication);
+            application = new contructor(dispatcher.context);
         } else {
             application = contructor;
             if(application.init) {
-                application.init(dispatcher.context, placeApplication);
+                application.init(dispatcher.context);
             }
         }
         return application;
