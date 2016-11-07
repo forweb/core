@@ -213,7 +213,6 @@ var Engine = (function(){
 
     return Engine;
 })();
-
 Engine.define('Ajax', (function () {
     var Ajax = {
         /**
@@ -233,8 +232,8 @@ Engine.define('Ajax', (function () {
     Ajax.ajax = function (data, resolve, reject) {
         var xhr = Ajax.getXhr();
         xhr.open(data.type, data.url, true);
-        addHeaders(Ajax.headers);
-        addHeaders(data.headers);
+        addHeaders(xhr, Ajax.headers);
+        addHeaders(xhr, data.headers);
         xhr.onload = function () {
             if (xhr.status >199 && xhr.status < 300) {
                 resolve(Ajax.process(xhr, data.responseType), xhr);
@@ -275,7 +274,6 @@ Engine.define('Ajax', (function () {
     };
     return Ajax;
 }));
-
 Engine.define('Rest', 'Ajax', (function () {
     var Ajax = Engine.require('Ajax');
 
